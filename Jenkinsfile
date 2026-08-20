@@ -198,9 +198,17 @@ pipeline {
                 echo "================================================="
                 echo "STAGE 9: Updating Git Manifest Image Tag (Main Branch Only)"
                 echo "================================================="
-                withCredentials([sshUserPrivateKey(credentialsId: env.GIT_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY', usernameVariable: 'GIT_USER')]) {
+                withCredentials([usernamePassword(credentialsId: env.GIT_CREDENTIALS_ID, usernameVariable: 'GIT_USER', passwordVariable: 'GIT_PASS')]) {
                     sh '''
                         chmod +x ./scripts/update-image-tag.sh
+                        
+                        # Configure authenticated git remote URL if using HTTPS
+                        REMOTE_URL=$(git config --get remote.origin.url | sed -E 's|https://[^@]+@|https://|')
+                        if [[ "${REMOTE_URL}" == https://* ]]; then
+                            AUTH_REMOTE=$(echo "${REMOTE_URL}" | sed -E "s|https://|https://${GIT_USER}:${GIT_PASS}@|")
+                            git remote set-url origin "${AUTH_REMOTE}"
+                        fi
+
                         ./scripts/update-image-tag.sh "${VERSION_TAG}" "deployments/k8s/deployment.yaml"
                     '''
                 }
