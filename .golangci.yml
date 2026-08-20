@@ -1,19 +1,17 @@
-version: "2"
-
 run:
   timeout: 5m
   modules-download-mode: readonly
 
 linters-settings:
   govet:
-    check-shadowing: true
+    enable:
+      - shadow
   gosec:
     severity: "medium"
     confidence: "medium"
 
 linters:
-  disable:
-    - revive
+  disable-all: true
   enable:
     - errcheck
     - govet
@@ -26,6 +24,3 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
-  exclude-rules:
-    - linters:
-        - revive
