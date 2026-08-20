@@ -42,7 +42,9 @@ pipeline {
                     env.COMMIT_SHA       = commitSha
                     env.FULL_IMAGE_TAG   = "${REGISTRY}/${IMAGE_NAME}:${env.VERSION_TAG}"
                     env.LATEST_IMAGE_TAG = "${REGISTRY}/${IMAGE_NAME}:latest"
+                    env.CURRENT_BRANCH   = env.BRANCH_NAME ?: env.GIT_BRANCH ?: 'main'
 
+                    echo "Build Branch      : ${env.CURRENT_BRANCH}"
                     echo "Build Version Tag : ${env.VERSION_TAG}"
                     echo "Git Commit SHA    : ${env.COMMIT_SHA}"
                     echo "Target Image Tag  : ${env.FULL_IMAGE_TAG}"
@@ -59,7 +61,7 @@ pipeline {
             }
             steps {
                 echo "================================================="
-                echo "STAGE 2: Code Quality & Static Analysis"
+                echo "STAGE 2: Code Quality & Static Analysis (PR & Main)"
                 echo "================================================="
                 sh 'golangci-lint run --timeout 5m ./...'
             }
@@ -74,7 +76,7 @@ pipeline {
             }
             steps {
                 echo "================================================="
-                echo "STAGE 3: SAST Security & Vulnerability Audit"
+                echo "STAGE 3: SAST Security & Vulnerability Audit (PR & Main)"
                 echo "================================================="
                 sh '''
                     apk add --no-cache git
@@ -99,7 +101,7 @@ pipeline {
             }
             steps {
                 echo "================================================="
-                echo "STAGE 4: Unit Testing & Code Coverage Threshold"
+                echo "STAGE 4: Unit Testing & Code Coverage Check (PR & Main)"
                 echo "================================================="
                 sh '''
                     apk add --no-cache gcc musl-dev
@@ -120,7 +122,7 @@ pipeline {
             }
         }
 
-        stage('Application Compile') {
+        stage('Application Compile Check') {
             agent {
                 docker {
                     image 'golang:1.22-alpine'
@@ -129,7 +131,7 @@ pipeline {
             }
             steps {
                 echo "================================================="
-                echo "STAGE 5: Compiling Static Application Binary"
+                echo "STAGE 5: Compiling Binary Verification (PR & Main)"
                 echo "================================================="
                 sh '''
                     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
@@ -141,6 +143,14 @@ pipeline {
         }
 
         stage('Docker Build') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.BRANCH_NAME == 'main' }
+                    expression { env.GIT_BRANCH == 'main' }
+                    expression { env.GIT_BRANCH == 'origin/main' }
+                }
+            }
             agent {
                 docker {
                     image 'docker:26-cli'
@@ -150,7 +160,7 @@ pipeline {
             }
             steps {
                 echo "================================================="
-                echo "STAGE 6: Building Docker Container Image"
+                echo "STAGE 6: Building Docker Container Image (Main Branch Only)"
                 echo "================================================="
                 sh '''
                     docker build \
@@ -163,6 +173,14 @@ pipeline {
         }
 
         stage('Container Security Scan (Trivy)') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.BRANCH_NAME == 'main' }
+                    expression { env.GIT_BRANCH == 'main' }
+                    expression { env.GIT_BRANCH == 'origin/main' }
+                }
+            }
             agent {
                 docker {
                     image 'aquasec/trivy:latest'
@@ -172,7 +190,7 @@ pipeline {
             }
             steps {
                 echo "================================================="
-                echo "STAGE 7: Container Vulnerability Scan (Trivy)"
+                echo "STAGE 7: Container Vulnerability Scan (Main Branch Only)"
                 echo "================================================="
                 sh '''
                     trivy image --exit-code 0 --severity HIGH,CRITICAL --format table ${FULL_IMAGE_TAG}
@@ -181,6 +199,14 @@ pipeline {
         }
 
         stage('Push to Docker Registry') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.BRANCH_NAME == 'main' }
+                    expression { env.GIT_BRANCH == 'main' }
+                    expression { env.GIT_BRANCH == 'origin/main' }
+                }
+            }
             agent {
                 docker {
                     image 'docker:26-cli'
@@ -190,7 +216,7 @@ pipeline {
             }
             steps {
                 echo "================================================="
-                echo "STAGE 8: Pushing Container Image to Registry"
+                echo "STAGE 8: Pushing Container Image to Registry (Main Branch Only)"
                 echo "================================================="
                 withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
@@ -204,6 +230,14 @@ pipeline {
         }
 
         stage('Update Git Image Tag') {
+            when {
+                anyOf {
+                    branch 'main'
+                    expression { env.BRANCH_NAME == 'main' }
+                    expression { env.GIT_BRANCH == 'main' }
+                    expression { env.GIT_BRANCH == 'origin/main' }
+                }
+            }
             agent {
                 docker {
                     image 'alpine/git:latest'
@@ -212,7 +246,7 @@ pipeline {
             }
             steps {
                 echo "================================================="
-                echo "STAGE 9: Updating Git Manifest Image Tag"
+                echo "STAGE 9: Updating Git Manifest Image Tag (Main Branch Only)"
                 echo "================================================="
                 withCredentials([sshUserPrivateKey(credentialsId: env.GIT_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY', usernameVariable: 'GIT_USER')]) {
                     sh '''
@@ -231,7 +265,7 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "SUCCESS: Jenkins Pipeline successfully completed for image tag ${env.FULL_IMAGE_TAG}"
+            echo "SUCCESS: Jenkins Pipeline successfully completed for branch ${env.CURRENT_BRANCH}"
         }
         failure {
             echo "FAILURE: Jenkins Pipeline failed at build #${BUILD_NUMBER}"
