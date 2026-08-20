@@ -17,7 +17,6 @@ linters-settings:
 linters:
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
