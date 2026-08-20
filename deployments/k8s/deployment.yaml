@@ -23,7 +23,7 @@ spec:
         fsGroup: 10001
       containers:
         - name: order-service
-          image: myregistry.example.com/order-service:1.0.0-dev
+          image: myregistry.example.com/order-service:1.0.0-682ac5c
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
