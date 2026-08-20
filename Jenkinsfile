@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label = ubuntu
+    }
 
     triggers {
         pollSCM('H/5 * * * *')
