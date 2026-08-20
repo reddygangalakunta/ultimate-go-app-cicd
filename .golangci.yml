@@ -22,7 +22,6 @@ linters:
     - ineffassign
     - staticcheck
     - unused
-    - gofmt
     - revive
     - gosec
 
