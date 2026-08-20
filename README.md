@@ -21,16 +21,18 @@ Production-grade Go microservice with an enterprise multi-stage **Jenkins Declar
 
 ### 3. Multi-Stage Containerized Jenkins Pipeline (`Jenkinsfile`)
 - **Docker Agent per Stage**: **No local tool pre-installation needed on Jenkins runner host**. Every stage runs in dedicated official Docker containers (`golangci-lint`, `golang`, `docker:26-cli`, `aquasec/trivy`, `alpine/git`).
-- **Enterprise Pipeline Stages**:
-  1. **Checkout & Environment Init**: Reads semantic version from `VERSION`, generates version tag `v<VERSION>.<BUILD_NUMBER>`.
-  2. **Static Analysis & Linting**: Runs `golangci-lint` to enforce code standard policies.
-  3. **SAST Security Scan**: Runs `gosec` (Go security scanner) and `govulncheck` (vulnerability database audit).
-  4. **Unit Tests & Code Coverage**: Executes `go test -v -race -coverprofile=coverage.out` and checks coverage threshold (`70%`).
-  5. **Application Compilation**: Compiles static binary with embedded build tags.
-  6. **Docker Image Build**: Builds multi-stage Docker image with version and latest tags.
-  7. **Container Vulnerability Scan (Trivy)**: Scans built image for HIGH & CRITICAL CVE vulnerabilities.
-  8. **Push to Docker Registry**: Securely logs in using Jenkins credentials store and pushes tagged image.
-  9. **Update Git Manifest Image Tag**: Executes `scripts/update-image-tag.sh` to update Kubernetes deployment manifest (`deployments/k8s/deployment.yaml`), commits changes, tags release, and pushes to remote Git repository.
+- **Multibranch & PR Pipeline Execution Rules**:
+  - **PR / Feature Branches**: Runs code validation & security checks:
+    1. **Checkout & Environment Init**
+    2. **Static Analysis & Linting** (`golangci-lint`)
+    3. **SAST Security Scan** (`gosec` & `govulncheck`)
+    4. **Unit Tests & Code Coverage Threshold** (`go test -v -race`)
+    5. **Application Compile Check** (`go build`)
+  - **Main Branch Only (`when { branch 'main' }`)**: In addition to all security & testing stages, executes release & deployment stages:
+    6. **Docker Image Build**
+    7. **Container Vulnerability Scan (Trivy)**
+    8. **Push to Docker Registry**
+    9. **Update Git Manifest Image Tag** (`scripts/update-image-tag.sh`)
 
 ### 4. Git Image Tag Update Script (`scripts/update-image-tag.sh`)
 - Robust bash script with `set -euo pipefail`.
