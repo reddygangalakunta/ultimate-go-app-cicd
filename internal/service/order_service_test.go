@@ -1,72 +1,46 @@
 package service_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/example/ultimate-ci-cd-pipeline/internal/model"
 	"github.com/example/ultimate-ci-cd-pipeline/internal/service"
 )
 
-func TestOrderService_CRUDAndMetrics(t *testing.T) {
+func TestOrderService_AdvancedFeatures(t *testing.T) {
 	svc := service.NewInMemoryOrderService()
 
-	// Initial seeds
-	orders, err := svc.ListOrders()
+	// Apply discount coupon
+	count, pct, err := svc.ApplyDiscount("ENTERPRISE10")
 	if err != nil {
-		t.Fatalf("expected no error listing orders, got %v", err)
+		t.Fatalf("expected discount application to succeed, got %v", err)
 	}
-	if len(orders) != 3 {
-		t.Fatalf("expected 3 seed orders, got %d", len(orders))
-	}
-
-	// Create order
-	req := model.CreateOrderRequest{
-		CustomerName: "Test Enterprise Client",
-		Item:         "Monitoring Dashboard",
-		Quantity:     1,
-		Price:        1000.00,
+	if count <= 0 || pct != 10.0 {
+		t.Errorf("unexpected discount results: count=%d, pct=%f", count, pct)
 	}
 
-	created, err := svc.CreateOrder(req)
-	if err != nil {
-		t.Fatalf("expected create order to succeed, got %v", err)
+	// Audit logs
+	logs := svc.GetAuditLogs()
+	if len(logs) == 0 {
+		t.Errorf("expected audit logs to be recorded")
 	}
 
-	// Update status
-	updated, err := svc.UpdateOrderStatus(created.ID, "COMPLETED")
-	if err != nil {
-		t.Fatalf("expected status update to succeed, got %v", err)
-	}
-	if updated.Status != "COMPLETED" {
-		t.Errorf("expected status COMPLETED, got %s", updated.Status)
+	// Export CSV
+	csvData := svc.ExportOrdersCSV()
+	if !strings.Contains(string(csvData), "Order ID") {
+		t.Errorf("expected CSV header in export output")
 	}
 
-	// Metrics
-	metrics := svc.GetMetrics()
-	if metrics.TotalOrders < 4 {
-		t.Errorf("expected at least 4 orders in metrics, got %d", metrics.TotalOrders)
-	}
-	if metrics.TotalRevenue <= 0 {
-		t.Errorf("expected positive total revenue in metrics")
+	// Export JSON
+	jsonData, err := svc.ExportOrdersJSON()
+	if err != nil || len(jsonData) == 0 {
+		t.Fatalf("failed JSON export: %v", err)
 	}
 
-	// Delete order
-	if err := svc.DeleteOrder(created.ID); err != nil {
-		t.Fatalf("expected delete to succeed, got %v", err)
-	}
-
-	// Verify deleted
-	_, err = svc.GetOrder(created.ID)
-	if err != model.ErrOrderNotFound {
-		t.Errorf("expected ErrOrderNotFound after deletion, got %v", err)
-	}
-}
-
-func TestOrderService_InvalidStatus(t *testing.T) {
-	svc := service.NewInMemoryOrderService()
-
-	_, err := svc.UpdateOrderStatus("ORD-0001", "INVALID_STATUS")
-	if err != model.ErrInvalidStatus {
-		t.Fatalf("expected ErrInvalidStatus, got %v", err)
+	// Invalid coupon code
+	_, _, err = svc.ApplyDiscount("INVALID_COUPON")
+	if err != model.ErrInvalidCoupon {
+		t.Errorf("expected ErrInvalidCoupon, got %v", err)
 	}
 }

@@ -246,7 +246,7 @@ const dashboardHTML = `<!DOCTYPE html>
       padding: 0.55rem 1rem;
       border-radius: 10px;
       font-size: 0.9rem;
-      width: 260px;
+      width: 240px;
       outline: none;
       transition: all 0.2s;
     }
@@ -275,6 +275,21 @@ const dashboardHTML = `<!DOCTYPE html>
     .btn:hover {
       opacity: 0.95;
       transform: scale(1.02);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .btn-danger {
@@ -339,10 +354,42 @@ const dashboardHTML = `<!DOCTYPE html>
     .status-select.COMPLETED { color: var(--green); border-color: rgba(16, 185, 129, 0.4); }
     .status-select.CANCELLED { color: var(--red); border-color: rgba(239, 68, 68, 0.4); }
 
+    /* Audit Logs Feed */
+    .audit-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      max-height: 250px;
+      overflow-y: auto;
+      margin-top: 1rem;
+    }
+
+    .audit-item {
+      background: rgba(3, 7, 18, 0.6);
+      border: 1px solid var(--card-border);
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    .audit-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+    }
+    .badge-CREATE { background: rgba(16, 185, 129, 0.2); color: var(--green); }
+    .badge-UPDATE_STATUS { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+    .badge-DELETE { background: rgba(239, 68, 68, 0.2); color: var(--red); }
+    .badge-DISCOUNT { background: rgba(245, 158, 11, 0.2); color: var(--yellow); }
+
     /* API Sandbox Panel */
     .endpoint-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin-top: 1rem;
     }
@@ -417,7 +464,7 @@ const dashboardHTML = `<!DOCTYPE html>
       margin-bottom: 0.4rem;
     }
 
-    input {
+    input, select {
       width: 100%;
       background: #030712;
       border: 1px solid var(--card-border);
@@ -489,12 +536,12 @@ const dashboardHTML = `<!DOCTYPE html>
         <div class="card-value" style="color: var(--green);" id="metric-revenue">$0.00</div>
       </div>
       <div class="card">
-        <div class="card-title"><span>Memory Allocated</span> 🧠</div>
-        <div class="card-value" style="color: var(--cyan);" id="metric-memory">0 MB</div>
+        <div class="card-title"><span>Average Order Value</span> 📈</div>
+        <div class="card-value" style="color: var(--cyan);" id="metric-aov">$0.00</div>
       </div>
       <div class="card">
-        <div class="card-title"><span>Goroutines / Uptime</span> ⚡</div>
-        <div class="card-value" style="color: #a855f7;" id="metric-uptime">0 / 0s</div>
+        <div class="card-title"><span>Top Customer</span> 🏆</div>
+        <div class="card-value" style="font-size: 1.3rem; color: #a855f7;" id="metric-topcust">-</div>
       </div>
     </div>
 
@@ -503,10 +550,11 @@ const dashboardHTML = `<!DOCTYPE html>
       <div class="toolbar">
         <div>
           <h2 style="font-size: 1.3rem; font-weight: 700;">Live Domain Orders</h2>
-          <p style="font-size: 0.85rem; color: var(--muted);">Real-time interactive order management & status updates</p>
+          <p style="font-size: 0.85rem; color: var(--muted);">Real-time interactive order management & batch operations</p>
         </div>
-        <div style="display: flex; gap: 0.75rem; align-items: center;">
-          <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search customer, item..." oninput="renderTable()" />
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          <button class="btn-secondary" onclick="window.open('/api/v1/orders/export?format=csv')">📥 Export CSV</button>
+          <button class="btn-secondary" onclick="window.open('/api/v1/orders/export?format=json')">📥 Export JSON</button>
           <button class="btn" onclick="openModal()">+ Create Order</button>
         </div>
       </div>
@@ -519,8 +567,26 @@ const dashboardHTML = `<!DOCTYPE html>
           <button class="filter-btn" onclick="setFilter('COMPLETED', this)">Completed</button>
           <button class="filter-btn" onclick="setFilter('CANCELLED', this)">Cancelled</button>
         </div>
-        <div style="font-size: 0.8rem; color: var(--muted);">
-          Auto-Refresh: <input type="checkbox" id="autoRefresh" checked /> (3s)
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search customer, item..." oninput="renderTable()" />
+          <div style="font-size: 0.8rem; color: var(--muted);">
+            Auto-Refresh: <input type="checkbox" id="autoRefresh" checked /> (3s)
+          </div>
+        </div>
+      </div>
+
+      <!-- Promo Coupon Application Widget -->
+      <div style="background: rgba(3, 7, 18, 0.5); border: 1px solid var(--card-border); padding: 0.85rem 1.25rem; border-radius: 12px; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+        <div style="font-size: 0.85rem; color: var(--muted); font-weight: 500;">
+          🏷️ <strong style="color: var(--text);">Promo Discount Simulator:</strong> Apply global discounts to active orders
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+          <select id="couponSelect" style="padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.85rem; background: #030712; color: var(--text); border: 1px solid var(--card-border);">
+            <option value="ENTERPRISE10">ENTERPRISE10 (10% Off)</option>
+            <option value="CLOUD20">CLOUD20 (20% Off)</option>
+            <option value="DEVOPS30">DEVOPS30 (30% Off)</option>
+          </select>
+          <button class="btn-secondary" onclick="applyPromo()">Apply Code</button>
         </div>
       </div>
 
@@ -545,6 +611,21 @@ const dashboardHTML = `<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Audit Logs & Governance Section -->
+    <div class="card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <h2 style="font-size: 1.2rem; font-weight: 700;">Audit & Compliance Feed</h2>
+          <p style="font-size: 0.85rem; color: var(--muted);">Immutable activity logging for compliance auditing</p>
+        </div>
+        <button class="btn-secondary" onclick="fetchAuditLogs()">🔄 Refresh Feed</button>
+      </div>
+
+      <div class="audit-list" id="audit-list">
+        <div style="text-align: center; color: var(--muted); padding: 1rem;">Loading audit feed...</div>
+      </div>
+    </div>
+
     <!-- Interactive API Explorer -->
     <div class="card">
       <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem;">Interactive API Sandbox</h2>
@@ -554,17 +635,14 @@ const dashboardHTML = `<!DOCTYPE html>
         <div class="endpoint-card" onclick="testEndpoint('/api/v1/metrics')">
           <div><span class="method method-get">GET</span>/api/v1/metrics</div>
         </div>
+        <div class="endpoint-card" onclick="testEndpoint('/api/v1/audit-logs')">
+          <div><span class="method method-get">GET</span>/api/v1/audit-logs</div>
+        </div>
         <div class="endpoint-card" onclick="testEndpoint('/api/v1/orders')">
           <div><span class="method method-get">GET</span>/api/v1/orders</div>
         </div>
         <div class="endpoint-card" onclick="testEndpoint('/healthz')">
           <div><span class="method method-get">GET</span>/healthz</div>
-        </div>
-        <div class="endpoint-card" onclick="testEndpoint('/livez')">
-          <div><span class="method method-get">GET</span>/livez</div>
-        </div>
-        <div class="endpoint-card" onclick="testEndpoint('/readyz')">
-          <div><span class="method method-get">GET</span>/readyz</div>
         </div>
       </div>
 
@@ -597,7 +675,7 @@ const dashboardHTML = `<!DOCTYPE html>
           <input type="number" step="0.01" id="itemPrice" value="499.00" required />
         </div>
         <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.75rem;">
-          <button type="button" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text);" onclick="closeModal()">Cancel</button>
+          <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
           <button type="submit" class="btn">Create Order</button>
         </div>
       </form>
@@ -611,7 +689,7 @@ const dashboardHTML = `<!DOCTYPE html>
     let currentFilter = 'ALL';
 
     async function loadData() {
-      await Promise.all([fetchOrders(), fetchMetrics()]);
+      await Promise.all([fetchOrders(), fetchMetrics(), fetchAuditLogs()]);
     }
 
     async function fetchMetrics() {
@@ -620,8 +698,8 @@ const dashboardHTML = `<!DOCTYPE html>
         const m = await res.json();
         document.getElementById('metric-orders').textContent = m.total_orders;
         document.getElementById('metric-revenue').textContent = '$' + m.total_revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        document.getElementById('metric-memory').textContent = m.alloc_memory_mb.toFixed(2) + ' MB';
-        document.getElementById('metric-uptime').textContent = m.num_goroutine + ' / ' + m.uptime_seconds + 's';
+        document.getElementById('metric-aov').textContent = '$' + m.avg_order_value.toFixed(2);
+        document.getElementById('metric-topcust').textContent = m.top_customer;
       } catch (err) {
         console.error('Failed metrics fetch:', err);
       }
@@ -634,6 +712,35 @@ const dashboardHTML = `<!DOCTYPE html>
         renderTable();
       } catch (err) {
         console.error('Failed orders fetch:', err);
+      }
+    }
+
+    async function fetchAuditLogs() {
+      try {
+        const res = await fetch('/api/v1/audit-logs');
+        const logs = await res.json();
+        const container = document.getElementById('audit-list');
+        container.innerHTML = '';
+
+        if (!logs || logs.length === 0) {
+          container.innerHTML = '<div style="text-align: center; color: var(--muted);">No audit events recorded yet.</div>';
+          return;
+        }
+
+        logs.slice(0, 10).forEach(log => {
+          const div = document.createElement('div');
+          div.className = 'audit-item';
+          const timeStr = new Date(log.timestamp).toLocaleTimeString();
+          div.innerHTML = 
+            '<div>' +
+              '<span class="audit-badge badge-' + log.action + '">' + log.action + '</span> ' +
+              '<strong style="color: var(--text);">' + escapeHtml(log.details) + '</strong>' +
+            '</div>' +
+            '<div style="color: var(--muted); font-size: 0.75rem;">' + timeStr + '</div>';
+          container.appendChild(div);
+        });
+      } catch (err) {
+        console.error('Failed audit logs fetch:', err);
       }
     }
 
@@ -685,6 +792,26 @@ const dashboardHTML = `<!DOCTYPE html>
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       renderTable();
+    }
+
+    async function applyPromo() {
+      const code = document.getElementById('couponSelect').value;
+      try {
+        const res = await fetch('/api/v1/orders/discount', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ coupon_code: code })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showToast('Applied ' + code + '! Reduced prices on ' + data.affected_orders + ' active orders');
+          loadData();
+        } else {
+          showToast(data.message || 'Failed applying coupon', true);
+        }
+      } catch (err) {
+        showToast('Error applying coupon', true);
+      }
     }
 
     async function updateStatus(id, newStatus) {

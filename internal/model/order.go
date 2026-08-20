@@ -6,9 +6,10 @@ import (
 )
 
 var (
-	ErrOrderNotFound = errors.New("order not found")
-	ErrInvalidOrder  = errors.New("invalid order payload")
-	ErrInvalidStatus = errors.New("invalid order status")
+	ErrOrderNotFound  = errors.New("order not found")
+	ErrInvalidOrder   = errors.New("invalid order payload")
+	ErrInvalidStatus  = errors.New("invalid order status")
+	ErrInvalidCoupon  = errors.New("invalid discount coupon code")
 )
 
 // Order represents an order domain object.
@@ -51,16 +52,39 @@ func (r *UpdateStatusRequest) Validate() error {
 	return nil
 }
 
+// ApplyDiscountRequest payload for applying a global promo discount code.
+type ApplyDiscountRequest struct {
+	CouponCode string `json:"coupon_code"`
+}
+
+func (r *ApplyDiscountRequest) Validate() error {
+	if r.CouponCode == "" {
+		return ErrInvalidCoupon
+	}
+	return nil
+}
+
+// AuditLog tracks system domain events for enterprise compliance.
+type AuditLog struct {
+	ID        string    `json:"id"`
+	Action    string    `json:"action"` // CREATE, UPDATE_STATUS, DELETE, DISCOUNT
+	OrderID   string    `json:"order_id,omitempty"`
+	Details   string    `json:"details"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
 // SystemMetrics represents Go runtime performance and domain statistics.
 type SystemMetrics struct {
-	GoVersion     string  `json:"go_version"`
-	NumGoroutine  int     `json:"num_goroutine"`
-	AllocMemoryMB float64 `json:"alloc_memory_mb"`
-	SysMemoryMB   float64 `json:"sys_memory_mb"`
-	NumGC         uint32  `json:"num_gc"`
-	UptimeSeconds int64   `json:"uptime_seconds"`
-	TotalOrders   int     `json:"total_orders"`
-	TotalRevenue  float64 `json:"total_revenue"`
+	GoVersion        string  `json:"go_version"`
+	NumGoroutine     int     `json:"num_goroutine"`
+	AllocMemoryMB    float64 `json:"alloc_memory_mb"`
+	SysMemoryMB      float64 `json:"sys_memory_mb"`
+	NumGC            uint32  `json:"num_gc"`
+	UptimeSeconds    int64   `json:"uptime_seconds"`
+	TotalOrders      int     `json:"total_orders"`
+	TotalRevenue     float64 `json:"total_revenue"`
+	AverageOrderVal  float64 `json:"avg_order_value"`
+	TopCustomer      string  `json:"top_customer"`
 }
 
 // HealthResponse represents standard health check output.

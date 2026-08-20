@@ -33,8 +33,21 @@ func (h *OrderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusMethodNotAllowed, model.ErrorResponse{Code: 405, Message: "Method not allowed"})
 
+	case path == "/export" || path == "/export/":
+		if r.Method == http.MethodGet {
+			h.ExportOrders(w, r)
+			return
+		}
+		writeJSON(w, http.StatusMethodNotAllowed, model.ErrorResponse{Code: 405, Message: "Method not allowed"})
+
+	case path == "/discount" || path == "/discount/":
+		if r.Method == http.MethodPost {
+			h.ApplyDiscount(w, r)
+			return
+		}
+		writeJSON(w, http.StatusMethodNotAllowed, model.ErrorResponse{Code: 405, Message: "Method not allowed"})
+
 	default:
-		// Trailing path handling (e.g. /ORD-0001 or /ORD-0001/status)
 		parts := strings.Split(strings.Trim(path, "/"), "/")
 		id := parts[0]
 
@@ -67,6 +80,64 @@ func (h *OrderHandler) Metrics(w http.ResponseWriter, r *http.Request) {
 	}
 	metrics := h.svc.GetMetrics()
 	writeJSON(w, http.StatusOK, metrics)
+}
+
+func (h *OrderHandler) AuditLogs(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, model.ErrorResponse{Code: 405, Message: "Method not allowed"})
+		return
+	}
+	logs := h.svc.GetAuditLogs()
+	writeJSON(w, http.StatusOK, logs)
+}
+
+func (h *OrderHandler) ExportOrders(w http.ResponseWriter, r *http.Request) {
+	format := strings.ToLower(r.URL.Query().Get("format"))
+
+	if format == "csv" {
+		csvData := h.svc.ExportOrdersCSV()
+		w.Header().Set("Content-Type", "text/csv")
+		w.Header().Set("Content-Disposition", "attachment; filename=orders_export.csv")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(csvData)
+		return
+	}
+
+	jsonData, err := h.svc.ExportOrdersJSON()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Code: 500, Message: err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Disposition", "attachment; filename=orders_export.json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(jsonData)
+}
+
+func (h *OrderHandler) ApplyDiscount(w http.ResponseWriter, r *http.Request) {
+	var req model.ApplyDiscountRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Code: 400, Message: "Invalid JSON payload"})
+		return
+	}
+
+	count, pct, err := h.svc.ApplyDiscount(req.CouponCode)
+	if err != nil {
+		if err == model.ErrInvalidCoupon {
+			writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Code: 400, Message: err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Code: 500, Message: err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"message":          "Promo discount applied successfully",
+		"coupon_code":      req.CouponCode,
+		"discount_percent": pct,
+		"affected_orders":  count,
+	})
 }
 
 func (h *OrderHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
