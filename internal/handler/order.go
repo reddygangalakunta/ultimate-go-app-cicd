@@ -21,8 +21,8 @@ func NewOrderHandler(svc service.OrderService) *OrderHandler {
 func (h *OrderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/orders")
 
-	switch {
-	case path == "" || path == "/":
+	switch path {
+	case "", "/":
 		if r.Method == http.MethodGet {
 			h.ListOrders(w, r)
 			return
@@ -33,14 +33,14 @@ func (h *OrderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 		writeJSON(w, http.StatusMethodNotAllowed, model.ErrorResponse{Code: 405, Message: "Method not allowed"})
 
-	case path == "/export" || path == "/export/":
+	case "/export", "/export/":
 		if r.Method == http.MethodGet {
 			h.ExportOrders(w, r)
 			return
 		}
 		writeJSON(w, http.StatusMethodNotAllowed, model.ErrorResponse{Code: 405, Message: "Method not allowed"})
 
-	case path == "/discount" || path == "/discount/":
+	case "/discount", "/discount/":
 		if r.Method == http.MethodPost {
 			h.ApplyDiscount(w, r)
 			return

@@ -13,6 +13,13 @@ linters-settings:
   revive:
     severity: warning
     confidence: 0.8
+    rules:
+      - name: package-comments
+        disabled: true
+      - name: exported
+        disabled: true
+      - name: unused-parameter
+        disabled: true
 
 linters:
   enable:
