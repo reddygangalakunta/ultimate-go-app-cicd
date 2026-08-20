@@ -18,6 +18,7 @@ pipeline {
         DOCKER_CREDENTIALS_ID = 'docker-registry-credentials'
         GIT_CREDENTIALS_ID    = 'git-credentials'
         COVERAGE_THRESHOLD    = '70'
+        DOCKER_HOST           = 'unix:///home/yashwanth-reddy/.docker/desktop/docker.sock'
     }
 
     stages {
@@ -153,7 +154,7 @@ pipeline {
             agent {
                 docker {
                     image 'docker:26-cli'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    args '-v /home/yashwanth-reddy/.docker/desktop/docker.sock:/var/run/docker.sock'
                     reuseNode true
                 }
             }
@@ -183,7 +184,7 @@ pipeline {
             agent {
                 docker {
                     image 'aquasec/trivy:latest'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    args '-v /home/yashwanth-reddy/.docker/desktop/docker.sock:/var/run/docker.sock'
                     reuseNode true
                 }
             }
@@ -209,7 +210,7 @@ pipeline {
             agent {
                 docker {
                     image 'docker:26-cli'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    args '-v /home/yashwanth-reddy/.docker/desktop/docker.sock:/var/run/docker.sock'
                     reuseNode true
                 }
             }
@@ -259,10 +260,6 @@ pipeline {
     }
 
     post {
-        always {
-            echo "Cleaning up workspace..."
-            cleanWs()
-        }
         success {
             echo "SUCCESS: Jenkins Pipeline successfully completed for branch ${env.CURRENT_BRANCH}"
         }
