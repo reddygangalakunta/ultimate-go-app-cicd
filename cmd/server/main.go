@@ -38,9 +38,11 @@ func main() {
 	orderService := service.NewInMemoryOrderService()
 	orderHandler := handler.NewOrderHandler(orderService)
 	healthHandler := handler.NewHealthHandler(cfg.Version)
+	uiHandler := handler.NewUIHandler(cfg.Version, cfg.Environment, cfg.AppName)
 
 	// Setup Router
 	mux := http.NewServeMux()
+	mux.Handle("/", uiHandler)
 	mux.HandleFunc("/healthz", healthHandler.Healthz)
 	mux.HandleFunc("/livez", healthHandler.Livez)
 	mux.HandleFunc("/readyz", healthHandler.Readyz)
