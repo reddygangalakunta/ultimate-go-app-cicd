@@ -150,7 +150,12 @@ pipeline {
                 echo "STAGE 7: Container Vulnerability Scan (Main Branch Only)"
                 echo "================================================="
                 sh '''
-                    trivy image --exit-code 0 --severity HIGH,CRITICAL --format table ${FULL_IMAGE_TAG}
+                    if command -v trivy >/dev/null 2>&1; then
+                        trivy image --exit-code 0 --severity HIGH,CRITICAL --format table ${FULL_IMAGE_TAG}
+                    else
+                        echo "[INFO] Trivy CLI not found locally. Running Trivy container via Docker..."
+                        docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --exit-code 0 --severity HIGH,CRITICAL --format table ${FULL_IMAGE_TAG}
+                    fi
                 '''
             }
         }
