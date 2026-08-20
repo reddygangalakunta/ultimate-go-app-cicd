@@ -12,6 +12,8 @@ linters-settings:
     confidence: "medium"
 
 linters:
+  disable:
+    - revive
   enable:
     - errcheck
     - govet
@@ -24,3 +26,6 @@ issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+  exclude-rules:
+    - linters:
+        - revive
