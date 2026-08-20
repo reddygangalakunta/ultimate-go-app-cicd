@@ -36,7 +36,14 @@ else
   sed -i -E "s|(image: .*:)[^[:space:]]+|\1${NEW_TAG}|g" "${MANIFEST_FILE}"
 fi
 
-echo "[INFO] Manifest updated successfully. Verifying diff:"
+echo "[INFO] Manifest updated successfully."
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "[WARN] Not inside a Git repository. Skipping git commit and push."
+  exit 0
+fi
+
+echo "[INFO] Verifying git diff:"
 git diff "${MANIFEST_FILE}"
 
 # Configure Git user identity for automated commit
@@ -74,3 +81,4 @@ else
 fi
 
 echo "[SUCCESS] Image tag update completed successfully!"
+
