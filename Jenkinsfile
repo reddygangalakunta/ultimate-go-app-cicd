@@ -1,5 +1,5 @@
 pipeline {
-    agent none
+    agent any
 
     triggers {
         pollSCM('H/5 * * * *')
@@ -18,17 +18,10 @@ pipeline {
         DOCKER_CREDENTIALS_ID = 'docker-registry-credentials'
         GIT_CREDENTIALS_ID    = 'git-credentials'
         COVERAGE_THRESHOLD    = '70'
-        DOCKER_HOST           = 'unix:///home/yashwanth-reddy/.docker/desktop/docker.sock'
     }
 
     stages {
         stage('Checkout & Environment Init') {
-            agent {
-                docker {
-                    image 'alpine/git:latest'
-                    reuseNode true
-                }
-            }
             steps {
                 script {
                     echo "================================================="
@@ -53,12 +46,6 @@ pipeline {
         }
 
         stage('Static Analysis & Linting') {
-            agent {
-                docker {
-                    image 'golangci/golangci-lint:v1.57.2-alpine'
-                    reuseNode true
-                }
-            }
             steps {
                 echo "================================================="
                 echo "STAGE 2: Code Quality & Static Analysis (PR & Main)"
@@ -68,20 +55,13 @@ pipeline {
         }
 
         stage('SAST Security Scan') {
-            agent {
-                docker {
-                    image 'golang:1.22-alpine'
-                    reuseNode true
-                }
-            }
             steps {
                 echo "================================================="
                 echo "STAGE 3: SAST Security & Vulnerability Audit (PR & Main)"
                 echo "================================================="
                 sh '''
-                    apk add --no-cache git
-                    go install github.com/securego/gosec/v2/cmd/gosec@latest
-                    go install golang.org/x/vuln/cmd/govulncheck@latest
+                    command -v gosec >/dev/null 2>&1 || go install github.com/securego/gosec/v2/cmd/gosec@latest
+                    command -v govulncheck >/dev/null 2>&1 || go install golang.org/x/vuln/cmd/govulncheck@latest
 
                     echo "--> Running Gosec security scanner..."
                     gosec -fmt=text ./... || true
@@ -93,18 +73,11 @@ pipeline {
         }
 
         stage('Unit Tests & Code Coverage') {
-            agent {
-                docker {
-                    image 'golang:1.22-alpine'
-                    reuseNode true
-                }
-            }
             steps {
                 echo "================================================="
                 echo "STAGE 4: Unit Testing & Code Coverage Check (PR & Main)"
                 echo "================================================="
                 sh '''
-                    apk add --no-cache gcc musl-dev
                     go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
 
                     COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
@@ -123,12 +96,6 @@ pipeline {
         }
 
         stage('Application Compile Check') {
-            agent {
-                docker {
-                    image 'golang:1.22-alpine'
-                    reuseNode true
-                }
-            }
             steps {
                 echo "================================================="
                 echo "STAGE 5: Compiling Binary Verification (PR & Main)"
@@ -149,13 +116,6 @@ pipeline {
                     expression { env.BRANCH_NAME == 'main' }
                     expression { env.GIT_BRANCH == 'main' }
                     expression { env.GIT_BRANCH == 'origin/main' }
-                }
-            }
-            agent {
-                docker {
-                    image 'docker:26-cli'
-                    args '-v /home/yashwanth-reddy/.docker/desktop/docker.sock:/var/run/docker.sock'
-                    reuseNode true
                 }
             }
             steps {
@@ -181,13 +141,6 @@ pipeline {
                     expression { env.GIT_BRANCH == 'origin/main' }
                 }
             }
-            agent {
-                docker {
-                    image 'aquasec/trivy:latest'
-                    args '-v /home/yashwanth-reddy/.docker/desktop/docker.sock:/var/run/docker.sock'
-                    reuseNode true
-                }
-            }
             steps {
                 echo "================================================="
                 echo "STAGE 7: Container Vulnerability Scan (Main Branch Only)"
@@ -205,13 +158,6 @@ pipeline {
                     expression { env.BRANCH_NAME == 'main' }
                     expression { env.GIT_BRANCH == 'main' }
                     expression { env.GIT_BRANCH == 'origin/main' }
-                }
-            }
-            agent {
-                docker {
-                    image 'docker:26-cli'
-                    args '-v /home/yashwanth-reddy/.docker/desktop/docker.sock:/var/run/docker.sock'
-                    reuseNode true
                 }
             }
             steps {
@@ -238,19 +184,12 @@ pipeline {
                     expression { env.GIT_BRANCH == 'origin/main' }
                 }
             }
-            agent {
-                docker {
-                    image 'alpine/git:latest'
-                    reuseNode true
-                }
-            }
             steps {
                 echo "================================================="
                 echo "STAGE 9: Updating Git Manifest Image Tag (Main Branch Only)"
                 echo "================================================="
                 withCredentials([sshUserPrivateKey(credentialsId: env.GIT_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY', usernameVariable: 'GIT_USER')]) {
                     sh '''
-                        apk add --no-cache bash sed
                         chmod +x ./scripts/update-image-tag.sh
                         ./scripts/update-image-tag.sh "${VERSION_TAG}" "deployments/k8s/deployment.yaml"
                     '''
@@ -260,6 +199,10 @@ pipeline {
     }
 
     post {
+        always {
+            echo "Cleaning up workspace..."
+            cleanWs()
+        }
         success {
             echo "SUCCESS: Jenkins Pipeline successfully completed for branch ${env.CURRENT_BRANCH}"
         }
