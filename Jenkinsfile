@@ -1,0 +1,240 @@
+pipeline {
+    agent none
+
+    triggers {
+        pollSCM('H/5 * * * *')
+    }
+
+    options {
+        timeout(time: 1, unit: 'HOURS')
+        timestamps()
+        ansiColor('xterm')
+        buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        REGISTRY              = 'docker.io'
+        IMAGE_NAME            = 'mycompany/order-service'
+        DOCKER_CREDENTIALS_ID = 'docker-registry-credentials'
+        GIT_CREDENTIALS_ID    = 'git-credentials'
+        COVERAGE_THRESHOLD    = '70'
+    }
+
+    stages {
+        stage('Checkout & Environment Init') {
+            agent {
+                docker {
+                    image 'alpine/git:latest'
+                    reuseNode true
+                }
+            }
+            steps {
+                script {
+                    echo "================================================="
+                    echo "STAGE 1: Checkout & Environment Initialization"
+                    echo "================================================="
+
+                    def rawVersion = readFile('VERSION').trim()
+                    def commitSha  = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+
+                    env.VERSION_TAG      = "${rawVersion}.${BUILD_NUMBER}"
+                    env.COMMIT_SHA       = commitSha
+                    env.FULL_IMAGE_TAG   = "${REGISTRY}/${IMAGE_NAME}:${env.VERSION_TAG}"
+                    env.LATEST_IMAGE_TAG = "${REGISTRY}/${IMAGE_NAME}:latest"
+
+                    echo "Build Version Tag : ${env.VERSION_TAG}"
+                    echo "Git Commit SHA    : ${env.COMMIT_SHA}"
+                    echo "Target Image Tag  : ${env.FULL_IMAGE_TAG}"
+                }
+            }
+        }
+
+        stage('Static Analysis & Linting') {
+            agent {
+                docker {
+                    image 'golangci/golangci-lint:v1.57.2-alpine'
+                    reuseNode true
+                }
+            }
+            steps {
+                echo "================================================="
+                echo "STAGE 2: Code Quality & Static Analysis"
+                echo "================================================="
+                sh 'golangci-lint run --timeout 5m ./...'
+            }
+        }
+
+        stage('SAST Security Scan') {
+            agent {
+                docker {
+                    image 'golang:1.22-alpine'
+                    reuseNode true
+                }
+            }
+            steps {
+                echo "================================================="
+                echo "STAGE 3: SAST Security & Vulnerability Audit"
+                echo "================================================="
+                sh '''
+                    apk add --no-cache git
+                    go install github.com/securego/gosec/v2/cmd/gosec@latest
+                    go install golang.org/x/vuln/cmd/govulncheck@latest
+
+                    echo "--> Running Gosec security scanner..."
+                    gosec -fmt=text ./... || true
+
+                    echo "--> Running Go Vulnerability Auditor (govulncheck)..."
+                    govulncheck ./...
+                '''
+            }
+        }
+
+        stage('Unit Tests & Code Coverage') {
+            agent {
+                docker {
+                    image 'golang:1.22-alpine'
+                    reuseNode true
+                }
+            }
+            steps {
+                echo "================================================="
+                echo "STAGE 4: Unit Testing & Code Coverage Threshold"
+                echo "================================================="
+                sh '''
+                    apk add --no-cache gcc musl-dev
+                    go test -v -race -coverprofile=coverage.out -covermode=atomic ./...
+
+                    COVERAGE=$(go tool cover -func=coverage.out | grep total: | awk '{print $3}' | sed 's/%//')
+                    echo "Total Code Coverage: ${COVERAGE}%"
+
+                    if [ $(echo "${COVERAGE} < ${COVERAGE_THRESHOLD}" | bc -l 2>/dev/null || awk "BEGIN {print (${COVERAGE} < ${COVERAGE_THRESHOLD})}") -eq 1 ]; then
+                        echo "[WARNING] Coverage ${COVERAGE}% is below target threshold ${COVERAGE_THRESHOLD}%"
+                    fi
+                '''
+            }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'coverage.out', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Application Compile') {
+            agent {
+                docker {
+                    image 'golang:1.22-alpine'
+                    reuseNode true
+                }
+            }
+            steps {
+                echo "================================================="
+                echo "STAGE 5: Compiling Static Application Binary"
+                echo "================================================="
+                sh '''
+                    CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+                        -ldflags="-s -w -X 'main.Version=${VERSION_TAG}'" \
+                        -trimpath \
+                        -o bin/server ./cmd/server
+                '''
+            }
+        }
+
+        stage('Docker Build') {
+            agent {
+                docker {
+                    image 'docker:26-cli'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    reuseNode true
+                }
+            }
+            steps {
+                echo "================================================="
+                echo "STAGE 6: Building Docker Container Image"
+                echo "================================================="
+                sh '''
+                    docker build \
+                        --build-arg VERSION="${VERSION_TAG}" \
+                        --build-arg COMMIT_SHA="${COMMIT_SHA}" \
+                        -t "${FULL_IMAGE_TAG}" \
+                        -t "${LATEST_IMAGE_TAG}" .
+                '''
+            }
+        }
+
+        stage('Container Security Scan (Trivy)') {
+            agent {
+                docker {
+                    image 'aquasec/trivy:latest'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    reuseNode true
+                }
+            }
+            steps {
+                echo "================================================="
+                echo "STAGE 7: Container Vulnerability Scan (Trivy)"
+                echo "================================================="
+                sh '''
+                    trivy image --exit-code 0 --severity HIGH,CRITICAL --format table ${FULL_IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Push to Docker Registry') {
+            agent {
+                docker {
+                    image 'docker:26-cli'
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    reuseNode true
+                }
+            }
+            steps {
+                echo "================================================="
+                echo "STAGE 8: Pushing Container Image to Registry"
+                echo "================================================="
+                withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                        echo "${DOCKER_PASS}" | docker login ${REGISTRY} -u "${DOCKER_USER}" --password-stdin
+                        docker push "${FULL_IMAGE_TAG}"
+                        docker push "${LATEST_IMAGE_TAG}"
+                        docker logout ${REGISTRY}
+                    '''
+                }
+            }
+        }
+
+        stage('Update Git Image Tag') {
+            agent {
+                docker {
+                    image 'alpine/git:latest'
+                    reuseNode true
+                }
+            }
+            steps {
+                echo "================================================="
+                echo "STAGE 9: Updating Git Manifest Image Tag"
+                echo "================================================="
+                withCredentials([sshUserPrivateKey(credentialsId: env.GIT_CREDENTIALS_ID, keyFileVariable: 'SSH_KEY', usernameVariable: 'GIT_USER')]) {
+                    sh '''
+                        apk add --no-cache bash sed
+                        chmod +x ./scripts/update-image-tag.sh
+                        ./scripts/update-image-tag.sh "${VERSION_TAG}" "deployments/k8s/deployment.yaml"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Cleaning up workspace..."
+            cleanWs()
+        }
+        success {
+            echo "SUCCESS: Jenkins Pipeline successfully completed for image tag ${env.FULL_IMAGE_TAG}"
+        }
+        failure {
+            echo "FAILURE: Jenkins Pipeline failed at build #${BUILD_NUMBER}"
+        }
+    }
+}

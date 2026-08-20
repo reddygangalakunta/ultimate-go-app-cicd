@@ -1,0 +1,30 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+
+linters-settings:
+  govet:
+    check-shadowing: true
+  gosec:
+    severity: "medium"
+    confidence: "medium"
+  revive:
+    severity: warning
+    confidence: 0.8
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - revive
+    - gosec
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

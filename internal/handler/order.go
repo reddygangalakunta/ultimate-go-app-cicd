@@ -1,0 +1,87 @@
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+	"strings"
+
+	"github.com/example/ultimate-ci-cd-pipeline/internal/model"
+	"github.com/example/ultimate-ci-cd-pipeline/internal/service"
+)
+
+type OrderHandler struct {
+	svc service.OrderService
+}
+
+func NewOrderHandler(svc service.OrderService) *OrderHandler {
+	return &OrderHandler{svc: svc}
+}
+
+// ServeHTTP routes order requests cleanly.
+func (h *OrderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := strings.TrimPrefix(r.URL.Path, "/api/v1/orders")
+
+	switch {
+	case path == "" || path == "/":
+		if r.Method == http.MethodGet {
+			h.ListOrders(w, r)
+			return
+		}
+		if r.Method == http.MethodPost {
+			h.CreateOrder(w, r)
+			return
+		}
+		writeJSON(w, http.StatusMethodNotAllowed, model.ErrorResponse{Code: 405, Message: "Method not allowed"})
+
+	default:
+		id := strings.TrimPrefix(path, "/")
+		if id != "" && r.Method == http.MethodGet {
+			h.GetOrder(w, r, id)
+			return
+		}
+		writeJSON(w, http.StatusNotFound, model.ErrorResponse{Code: 404, Message: "Endpoint not found"})
+	}
+}
+
+func (h *OrderHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
+	orders, err := h.svc.ListOrders()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Code: 500, Message: err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, orders)
+}
+
+func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Code: 400, Message: "Invalid request payload"})
+		return
+	}
+
+	order, err := h.svc.CreateOrder(req)
+	if err != nil {
+		if err == model.ErrInvalidOrder {
+			writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Code: 400, Message: err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Code: 500, Message: err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, order)
+}
+
+func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request, id string) {
+	order, err := h.svc.GetOrder(id)
+	if err != nil {
+		if err == model.ErrOrderNotFound {
+			writeJSON(w, http.StatusNotFound, model.ErrorResponse{Code: 404, Message: err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Code: 500, Message: err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, order)
+}
