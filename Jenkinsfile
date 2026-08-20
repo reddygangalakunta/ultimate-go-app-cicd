@@ -16,7 +16,7 @@ pipeline {
 
     environment {
         REGISTRY              = 'docker.io'
-        IMAGE_NAME            = 'mycompany/order-service'
+        IMAGE_NAME            = 'yashwanth1232/ultimate-go-app'
         DOCKER_CREDENTIALS_ID = 'docker-registry-credentials'
         GIT_CREDENTIALS_ID    = 'git-credentials'
         COVERAGE_THRESHOLD    = '70'

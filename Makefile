@@ -2,10 +2,10 @@
 # Enterprise Go Microservice Makefile
 # ==============================================================================
 
-APP_NAME ?= order-service
+APP_NAME ?= ultimate-go-app
 VERSION ?= $(shell cat VERSION)
 COMMIT_SHA ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "dev")
-IMAGE_REGISTRY ?= mycompany
+IMAGE_REGISTRY ?= yashwanth1232
 IMAGE_TAG ?= $(VERSION)-$(COMMIT_SHA)
 
 .PHONY: all build run test coverage lint docker-build update-tag clean
