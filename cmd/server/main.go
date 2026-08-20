@@ -46,6 +46,7 @@ func main() {
 	mux.HandleFunc("/healthz", healthHandler.Healthz)
 	mux.HandleFunc("/livez", healthHandler.Livez)
 	mux.HandleFunc("/readyz", healthHandler.Readyz)
+	mux.HandleFunc("/api/v1/metrics", orderHandler.Metrics)
 	mux.Handle("/api/v1/orders", orderHandler)
 	mux.Handle("/api/v1/orders/", orderHandler)
 

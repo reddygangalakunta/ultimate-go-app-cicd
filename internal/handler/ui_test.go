@@ -27,7 +27,7 @@ func TestUIHandler_ServeHTTP(t *testing.T) {
 		}
 
 		body := rr.Body.String()
-		if !strings.Contains(body, "Enterprise Order Microservice") {
+		if !strings.Contains(body, "Enterprise Microservice Control Center") {
 			t.Errorf("expected dashboard title in HTML output")
 		}
 		if !strings.Contains(body, "1.0.0") {

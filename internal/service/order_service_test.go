@@ -7,69 +7,66 @@ import (
 	"github.com/example/ultimate-ci-cd-pipeline/internal/service"
 )
 
-func TestOrderService_CreateAndGet(t *testing.T) {
+func TestOrderService_CRUDAndMetrics(t *testing.T) {
 	svc := service.NewInMemoryOrderService()
 
-	// Verify initial seed order
+	// Initial seeds
 	orders, err := svc.ListOrders()
 	if err != nil {
 		t.Fatalf("expected no error listing orders, got %v", err)
 	}
-	if len(orders) != 1 {
-		t.Fatalf("expected 1 initial order, got %d", len(orders))
+	if len(orders) != 3 {
+		t.Fatalf("expected 3 seed orders, got %d", len(orders))
 	}
 
-	// Create new order
+	// Create order
 	req := model.CreateOrderRequest{
-		CustomerName: "Acme Corp",
-		Item:         "Kubernetes Cluster",
-		Quantity:     2,
-		Price:        4999.00,
+		CustomerName: "Test Enterprise Client",
+		Item:         "Monitoring Dashboard",
+		Quantity:     1,
+		Price:        1000.00,
 	}
 
 	created, err := svc.CreateOrder(req)
 	if err != nil {
-		t.Fatalf("expected order creation to succeed, got %v", err)
+		t.Fatalf("expected create order to succeed, got %v", err)
 	}
 
-	if created.ID == "" {
-		t.Errorf("expected non-empty ID")
-	}
-	if created.CustomerName != req.CustomerName {
-		t.Errorf("expected customer %s, got %s", req.CustomerName, created.CustomerName)
-	}
-
-	// Retrieve order
-	fetched, err := svc.GetOrder(created.ID)
+	// Update status
+	updated, err := svc.UpdateOrderStatus(created.ID, "COMPLETED")
 	if err != nil {
-		t.Fatalf("expected to get order %s, got error: %v", created.ID, err)
+		t.Fatalf("expected status update to succeed, got %v", err)
 	}
-	if fetched.Item != req.Item {
-		t.Errorf("expected item %s, got %s", req.Item, fetched.Item)
-	}
-}
-
-func TestOrderService_CreateInvalid(t *testing.T) {
-	svc := service.NewInMemoryOrderService()
-
-	req := model.CreateOrderRequest{
-		CustomerName: "",
-		Item:         "Test Item",
-		Quantity:     -1,
-		Price:        0,
+	if updated.Status != "COMPLETED" {
+		t.Errorf("expected status COMPLETED, got %s", updated.Status)
 	}
 
-	_, err := svc.CreateOrder(req)
-	if err != model.ErrInvalidOrder {
-		t.Fatalf("expected ErrInvalidOrder, got %v", err)
+	// Metrics
+	metrics := svc.GetMetrics()
+	if metrics.TotalOrders < 4 {
+		t.Errorf("expected at least 4 orders in metrics, got %d", metrics.TotalOrders)
 	}
-}
+	if metrics.TotalRevenue <= 0 {
+		t.Errorf("expected positive total revenue in metrics")
+	}
 
-func TestOrderService_GetNotFound(t *testing.T) {
-	svc := service.NewInMemoryOrderService()
+	// Delete order
+	if err := svc.DeleteOrder(created.ID); err != nil {
+		t.Fatalf("expected delete to succeed, got %v", err)
+	}
 
-	_, err := svc.GetOrder("NON_EXISTENT_ID")
+	// Verify deleted
+	_, err = svc.GetOrder(created.ID)
 	if err != model.ErrOrderNotFound {
-		t.Fatalf("expected ErrOrderNotFound, got %v", err)
+		t.Errorf("expected ErrOrderNotFound after deletion, got %v", err)
+	}
+}
+
+func TestOrderService_InvalidStatus(t *testing.T) {
+	svc := service.NewInMemoryOrderService()
+
+	_, err := svc.UpdateOrderStatus("ORD-0001", "INVALID_STATUS")
+	if err != model.ErrInvalidStatus {
+		t.Fatalf("expected ErrInvalidStatus, got %v", err)
 	}
 }

@@ -17,7 +17,7 @@ func NewOrderHandler(svc service.OrderService) *OrderHandler {
 	return &OrderHandler{svc: svc}
 }
 
-// ServeHTTP routes order requests cleanly.
+// ServeHTTP routes order REST API requests cleanly.
 func (h *OrderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := strings.TrimPrefix(r.URL.Path, "/api/v1/orders")
 
@@ -34,13 +34,39 @@ func (h *OrderHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusMethodNotAllowed, model.ErrorResponse{Code: 405, Message: "Method not allowed"})
 
 	default:
-		id := strings.TrimPrefix(path, "/")
-		if id != "" && r.Method == http.MethodGet {
-			h.GetOrder(w, r, id)
-			return
+		// Trailing path handling (e.g. /ORD-0001 or /ORD-0001/status)
+		parts := strings.Split(strings.Trim(path, "/"), "/")
+		id := parts[0]
+
+		if len(parts) == 1 {
+			if r.Method == http.MethodGet {
+				h.GetOrder(w, r, id)
+				return
+			}
+			if r.Method == http.MethodDelete {
+				h.DeleteOrder(w, r, id)
+				return
+			}
 		}
+
+		if len(parts) == 2 && parts[1] == "status" {
+			if r.Method == http.MethodPut || r.Method == http.MethodPatch {
+				h.UpdateOrderStatus(w, r, id)
+				return
+			}
+		}
+
 		writeJSON(w, http.StatusNotFound, model.ErrorResponse{Code: 404, Message: "Endpoint not found"})
 	}
+}
+
+func (h *OrderHandler) Metrics(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, model.ErrorResponse{Code: 405, Message: "Method not allowed"})
+		return
+	}
+	metrics := h.svc.GetMetrics()
+	writeJSON(w, http.StatusOK, metrics)
 }
 
 func (h *OrderHandler) ListOrders(w http.ResponseWriter, r *http.Request) {
@@ -84,4 +110,45 @@ func (h *OrderHandler) GetOrder(w http.ResponseWriter, r *http.Request, id strin
 	}
 
 	writeJSON(w, http.StatusOK, order)
+}
+
+func (h *OrderHandler) UpdateOrderStatus(w http.ResponseWriter, r *http.Request, id string) {
+	var req model.UpdateStatusRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Code: 400, Message: "Invalid JSON payload"})
+		return
+	}
+
+	order, err := h.svc.UpdateOrderStatus(id, req.Status)
+	if err != nil {
+		if err == model.ErrOrderNotFound {
+			writeJSON(w, http.StatusNotFound, model.ErrorResponse{Code: 404, Message: err.Error()})
+			return
+		}
+		if err == model.ErrInvalidStatus {
+			writeJSON(w, http.StatusBadRequest, model.ErrorResponse{Code: 400, Message: err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Code: 500, Message: err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, order)
+}
+
+func (h *OrderHandler) DeleteOrder(w http.ResponseWriter, r *http.Request, id string) {
+	err := h.svc.DeleteOrder(id)
+	if err != nil {
+		if err == model.ErrOrderNotFound {
+			writeJSON(w, http.StatusNotFound, model.ErrorResponse{Code: 404, Message: err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusInternalServerError, model.ErrorResponse{Code: 500, Message: err.Error()})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"message": "order deleted successfully",
+		"id":      id,
+	})
 }

@@ -20,7 +20,6 @@ func NewUIHandler(version, environment, appName string) *UIHandler {
 }
 
 func (u *UIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Serve root dashboard only for root path '/' or '/dashboard'
 	if r.URL.Path != "/" && r.URL.Path != "/dashboard" {
 		writeJSON(w, http.StatusNotFound, map[string]string{
 			"error":   "404 page not found",
@@ -47,32 +46,33 @@ const dashboardHTML = `<!DOCTYPE html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Enterprise Order Microservice | Dashboard</title>
+  <title>Enterprise Microservice Control Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-gradient: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, #020617 100%);
-      --card-bg: rgba(15, 23, 42, 0.75);
+      --bg: #030712;
+      --card-bg: rgba(17, 24, 39, 0.7);
       --card-border: rgba(255, 255, 255, 0.08);
-      --card-border-hover: rgba(99, 102, 241, 0.4);
+      --card-hover: rgba(99, 102, 241, 0.3);
       --primary: #6366f1;
       --primary-hover: #4f46e5;
-      --accent-cyan: #06b6d4;
-      --accent-green: #10b981;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      --cyan: #06b6d4;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #f9fafb;
+      --muted: #9ca3af;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    
+
     body {
-      background: var(--bg-gradient);
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #030712 60%);
       background-attachment: fixed;
-      color: var(--text-main);
-      font-family: var(--font-family);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
       min-height: 100vh;
       line-height: 1.5;
     }
@@ -83,7 +83,7 @@ const dashboardHTML = `<!DOCTYPE html>
       z-index: 100;
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
-      background: rgba(2, 6, 23, 0.8);
+      background: rgba(3, 7, 18, 0.85);
       border-bottom: 1px solid var(--card-border);
       padding: 1rem 2rem;
       display: flex;
@@ -95,7 +95,7 @@ const dashboardHTML = `<!DOCTYPE html>
       display: flex;
       align-items: center;
       gap: 0.75rem;
-      font-weight: 700;
+      font-weight: 800;
       font-size: 1.25rem;
       background: linear-gradient(135deg, #a5b4fc, #38bdf8);
       -webkit-background-clip: text;
@@ -103,15 +103,31 @@ const dashboardHTML = `<!DOCTYPE html>
     }
 
     .brand-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, var(--primary), var(--accent-cyan));
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--primary), var(--cyan));
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+    }
+
+    .status-container {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .version-tag {
+      font-size: 0.85rem;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      padding: 0.25rem 0.65rem;
+      border-radius: 6px;
+      font-weight: 600;
     }
 
     .status-badge {
@@ -120,7 +136,7 @@ const dashboardHTML = `<!DOCTYPE html>
       gap: 0.5rem;
       background: rgba(16, 185, 129, 0.1);
       border: 1px solid rgba(16, 185, 129, 0.3);
-      color: var(--accent-green);
+      color: var(--green);
       padding: 0.35rem 0.85rem;
       border-radius: 9999px;
       font-size: 0.85rem;
@@ -130,9 +146,9 @@ const dashboardHTML = `<!DOCTYPE html>
     .pulse-dot {
       width: 8px;
       height: 8px;
-      background-color: var(--accent-green);
+      background-color: var(--green);
       border-radius: 50%;
-      box-shadow: 0 0 10px var(--accent-green);
+      box-shadow: 0 0 10px var(--green);
       animation: pulse 2s infinite;
     }
 
@@ -143,7 +159,7 @@ const dashboardHTML = `<!DOCTYPE html>
     }
 
     main {
-      max-width: 1200px;
+      max-width: 1280px;
       margin: 2rem auto;
       padding: 0 1.5rem;
       display: flex;
@@ -151,10 +167,10 @@ const dashboardHTML = `<!DOCTYPE html>
       gap: 2rem;
     }
 
-    .grid-3 {
+    .grid-4 {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
     }
 
     .card {
@@ -169,36 +185,82 @@ const dashboardHTML = `<!DOCTYPE html>
     }
 
     .card:hover {
-      border-color: var(--card-border-hover);
+      border-color: var(--card-hover);
       transform: translateY(-2px);
     }
 
     .card-title {
-      font-size: 0.9rem;
+      font-size: 0.8rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-      color: var(--text-muted);
-      margin-bottom: 0.5rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+      display: flex;
+      justify-content: space-between;
     }
 
     .card-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: var(--text-main);
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--text);
     }
 
-    .table-header {
+    /* Toolbar & Search */
+    .toolbar {
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
       align-items: center;
+      gap: 1rem;
       margin-bottom: 1.25rem;
+    }
+
+    .filter-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .filter-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      color: var(--muted);
+      padding: 0.4rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: var(--primary);
+      color: var(--text);
+    }
+
+    .search-input {
+      background: rgba(3, 7, 18, 0.6);
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.55rem 1rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      width: 260px;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.3);
     }
 
     .btn {
       background: linear-gradient(135deg, var(--primary), var(--primary-hover));
       color: #fff;
       border: none;
-      padding: 0.6rem 1.2rem;
+      padding: 0.6rem 1.25rem;
       border-radius: 10px;
       font-weight: 600;
       font-size: 0.9rem;
@@ -215,17 +277,22 @@ const dashboardHTML = `<!DOCTYPE html>
       transform: scale(1.02);
     }
 
-    .btn-secondary {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid var(--card-border);
-      color: var(--text-main);
-      box-shadow: none;
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: var(--red);
+      padding: 0.3rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
     }
 
-    .btn-secondary:hover {
-      background: rgba(255, 255, 255, 0.1);
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
     }
 
+    /* Table Component */
     .table-wrapper {
       overflow-x: auto;
     }
@@ -238,8 +305,8 @@ const dashboardHTML = `<!DOCTYPE html>
 
     th {
       padding: 0.85rem 1rem;
-      color: var(--text-muted);
-      font-size: 0.8rem;
+      color: var(--muted);
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 0.05em;
       border-bottom: 1px solid var(--card-border);
@@ -248,36 +315,52 @@ const dashboardHTML = `<!DOCTYPE html>
     td {
       padding: 1rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-      font-size: 0.925rem;
+      font-size: 0.9rem;
     }
 
-    tr:last-child td { border-bottom: none; }
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
 
-    .tag {
-      padding: 0.25rem 0.65rem;
+    .status-select {
+      background: #030712;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 0.3rem 0.6rem;
       border-radius: 6px;
-      font-size: 0.75rem;
+      font-size: 0.8rem;
       font-weight: 600;
-      display: inline-block;
+      outline: none;
+      cursor: pointer;
     }
 
-    .tag-created { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .status-select.CREATED { color: #38bdf8; border-color: rgba(56, 189, 248, 0.4); }
+    .status-select.PROCESSING { color: var(--yellow); border-color: rgba(245, 158, 11, 0.4); }
+    .status-select.COMPLETED { color: var(--green); border-color: rgba(16, 185, 129, 0.4); }
+    .status-select.CANCELLED { color: var(--red); border-color: rgba(239, 68, 68, 0.4); }
 
+    /* API Sandbox Panel */
     .endpoint-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1rem;
       margin-top: 1rem;
     }
 
     .endpoint-card {
-      background: rgba(2, 6, 23, 0.5);
+      background: rgba(3, 7, 18, 0.6);
       border: 1px solid var(--card-border);
-      padding: 1rem;
+      padding: 0.85rem 1rem;
       border-radius: 12px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .endpoint-card:hover {
+      border-color: var(--primary);
     }
 
     .method {
@@ -287,25 +370,26 @@ const dashboardHTML = `<!DOCTYPE html>
       border-radius: 4px;
       margin-right: 0.5rem;
     }
-    .method-get { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+    .method-get { background: rgba(16, 185, 129, 0.2); color: var(--green); }
 
     pre {
-      background: #020617;
+      background: #030712;
       border: 1px solid var(--card-border);
-      padding: 1rem;
-      border-radius: 10px;
+      padding: 1.25rem;
+      border-radius: 12px;
       overflow-x: auto;
-      font-family: monospace;
+      font-family: 'Fira Code', monospace;
       color: #38bdf8;
       font-size: 0.85rem;
-      max-height: 250px;
+      max-height: 280px;
     }
 
+    /* Modal Form */
     .modal-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(6px);
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
       display: none;
       align-items: center;
       justify-content: center;
@@ -314,38 +398,66 @@ const dashboardHTML = `<!DOCTYPE html>
 
     .modal {
       background: #0f172a;
-      border: 1px solid var(--card-border-hover);
-      border-radius: 16px;
+      border: 1px solid var(--card-hover);
+      border-radius: 20px;
       width: 100%;
       max-width: 480px;
-      padding: 1.75rem;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+      padding: 2rem;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8);
     }
 
     .form-group {
-      margin-bottom: 1.2rem;
+      margin-bottom: 1.25rem;
     }
 
     label {
       display: block;
       font-size: 0.85rem;
-      color: var(--text-muted);
+      color: var(--muted);
       margin-bottom: 0.4rem;
     }
 
     input {
       width: 100%;
-      background: #020617;
+      background: #030712;
       border: 1px solid var(--card-border);
-      color: var(--text-main);
+      color: var(--text);
       padding: 0.75rem 1rem;
-      border-radius: 8px;
+      border-radius: 10px;
       font-family: inherit;
       outline: none;
     }
 
-    input:focus {
-      border-color: var(--primary);
+    input:focus { border-color: var(--primary); }
+
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      z-index: 300;
+    }
+
+    .toast {
+      background: #0f172a;
+      border: 1px solid var(--card-border);
+      border-left: 4px solid var(--primary);
+      padding: 0.85rem 1.25rem;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-size: 0.9rem;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
     }
   </style>
 </head>
@@ -354,39 +466,61 @@ const dashboardHTML = `<!DOCTYPE html>
   <header>
     <div class="brand">
       <div class="brand-icon">⚡</div>
-      <div>Enterprise Go Platform</div>
+      <div>{{APP_NAME}}</div>
     </div>
-    <div class="status-badge">
-      <span class="pulse-dot"></span> SYSTEM HEALTHY
+    <div class="status-container">
+      <span class="version-tag">v{{VERSION}} ({{ENV}})</span>
+      <div class="status-badge">
+        <span class="pulse-dot"></span> LIVE APP OK
+      </div>
     </div>
   </header>
 
   <main>
 
-    <div class="grid-3">
+    <!-- Metrics Header Cards -->
+    <div class="grid-4">
       <div class="card">
-        <div class="card-title">Microservice Name</div>
-        <div class="card-value">{{APP_NAME}}</div>
+        <div class="card-title"><span>Total Orders</span> 📦</div>
+        <div class="card-value" id="metric-orders">-</div>
       </div>
       <div class="card">
-        <div class="card-title">Active Release Version</div>
-        <div class="card-value" style="color: #38bdf8;">{{VERSION}}</div>
+        <div class="card-title"><span>Total Revenue</span> 💵</div>
+        <div class="card-value" style="color: var(--green);" id="metric-revenue">$0.00</div>
       </div>
       <div class="card">
-        <div class="card-title">Deployment Environment</div>
-        <div class="card-value" style="color: var(--accent-green);">{{ENV}}</div>
+        <div class="card-title"><span>Memory Allocated</span> 🧠</div>
+        <div class="card-value" style="color: var(--cyan);" id="metric-memory">0 MB</div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span>Goroutines / Uptime</span> ⚡</div>
+        <div class="card-value" style="color: #a855f7;" id="metric-uptime">0 / 0s</div>
       </div>
     </div>
 
+    <!-- Live Orders Table Section -->
     <div class="card">
-      <div class="table-header">
+      <div class="toolbar">
         <div>
-          <h2 style="font-size: 1.25rem; font-weight: 600;">Enterprise Orders</h2>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">Real-time synchronized domain records</p>
+          <h2 style="font-size: 1.3rem; font-weight: 700;">Live Domain Orders</h2>
+          <p style="font-size: 0.85rem; color: var(--muted);">Real-time interactive order management & status updates</p>
         </div>
-        <div style="display: flex; gap: 0.5rem;">
-          <button class="btn btn-secondary" onclick="fetchOrders()">🔄 Refresh</button>
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+          <input type="text" class="search-input" id="searchInput" placeholder="🔍 Search customer, item..." oninput="renderTable()" />
           <button class="btn" onclick="openModal()">+ Create Order</button>
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-bottom: 1rem;">
+        <div class="filter-group">
+          <button class="filter-btn active" onclick="setFilter('ALL', this)">All</button>
+          <button class="filter-btn" onclick="setFilter('CREATED', this)">Created</button>
+          <button class="filter-btn" onclick="setFilter('PROCESSING', this)">Processing</button>
+          <button class="filter-btn" onclick="setFilter('COMPLETED', this)">Completed</button>
+          <button class="filter-btn" onclick="setFilter('CANCELLED', this)">Cancelled</button>
+        </div>
+        <div style="font-size: 0.8rem; color: var(--muted);">
+          Auto-Refresh: <input type="checkbox" id="autoRefresh" checked /> (3s)
         </div>
       </div>
 
@@ -396,53 +530,55 @@ const dashboardHTML = `<!DOCTYPE html>
             <tr>
               <th>Order ID</th>
               <th>Customer Name</th>
-              <th>Item</th>
-              <th>Quantity</th>
-              <th>Total Price</th>
-              <th>Status</th>
+              <th>Item Description</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Total Amount</th>
+              <th>Status (Interactive)</th>
+              <th>Action</th>
             </tr>
           </thead>
           <tbody id="orders-list">
-            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading live orders...</td></tr>
+            <tr><td colspan="8" style="text-align: center; color: var(--muted);">Loading orders...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
+    <!-- Interactive API Explorer -->
     <div class="card">
-      <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.25rem;">Interactive API Explorer</h2>
-      <p style="font-size: 0.85rem; color: var(--text-muted);">Test live microservice endpoints in real-time</p>
+      <h2 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.25rem;">Interactive API Sandbox</h2>
+      <p style="font-size: 0.85rem; color: var(--muted);">Test live Go microservice endpoints and inspect JSON payloads</p>
 
       <div class="endpoint-grid">
-        <div class="endpoint-card">
-          <div><span class="method method-get">GET</span>/healthz</div>
-          <button class="btn btn-secondary" onclick="testEndpoint('/healthz')">Test</button>
+        <div class="endpoint-card" onclick="testEndpoint('/api/v1/metrics')">
+          <div><span class="method method-get">GET</span>/api/v1/metrics</div>
         </div>
-        <div class="endpoint-card">
-          <div><span class="method method-get">GET</span>/livez</div>
-          <button class="btn btn-secondary" onclick="testEndpoint('/livez')">Test</button>
-        </div>
-        <div class="endpoint-card">
-          <div><span class="method method-get">GET</span>/readyz</div>
-          <button class="btn btn-secondary" onclick="testEndpoint('/readyz')">Test</button>
-        </div>
-        <div class="endpoint-card">
+        <div class="endpoint-card" onclick="testEndpoint('/api/v1/orders')">
           <div><span class="method method-get">GET</span>/api/v1/orders</div>
-          <button class="btn btn-secondary" onclick="testEndpoint('/api/v1/orders')">Test</button>
+        </div>
+        <div class="endpoint-card" onclick="testEndpoint('/healthz')">
+          <div><span class="method method-get">GET</span>/healthz</div>
+        </div>
+        <div class="endpoint-card" onclick="testEndpoint('/livez')">
+          <div><span class="method method-get">GET</span>/livez</div>
+        </div>
+        <div class="endpoint-card" onclick="testEndpoint('/readyz')">
+          <div><span class="method method-get">GET</span>/readyz</div>
         </div>
       </div>
 
       <div style="margin-top: 1.5rem;">
-        <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem;">JSON Response Output:</div>
-        <pre id="api-output">// Click any "Test" button above to inspect endpoint response</pre>
+        <pre id="api-output">// Click any API endpoint card above to inspect live JSON response</pre>
       </div>
     </div>
 
   </main>
 
+  <!-- Create Order Modal -->
   <div class="modal-overlay" id="orderModal">
     <div class="modal">
-      <h3 style="font-size: 1.2rem; margin-bottom: 1rem;">Create New Enterprise Order</h3>
+      <h3 style="font-size: 1.3rem; margin-bottom: 1.25rem; font-weight: 700;">Create New Enterprise Order</h3>
       <form id="createOrderForm" onsubmit="submitOrder(event)">
         <div class="form-group">
           <label>Customer Name</label>
@@ -450,7 +586,7 @@ const dashboardHTML = `<!DOCTYPE html>
         </div>
         <div class="form-group">
           <label>Item Description</label>
-          <input type="text" id="itemDesc" placeholder="Managed Kubernetes Node Cluster" required />
+          <input type="text" id="itemDesc" placeholder="Kubernetes Managed Cluster" required />
         </div>
         <div class="form-group">
           <label>Quantity</label>
@@ -460,62 +596,124 @@ const dashboardHTML = `<!DOCTYPE html>
           <label>Unit Price ($)</label>
           <input type="number" step="0.01" id="itemPrice" value="499.00" required />
         </div>
-        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
-          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-          <button type="submit" class="btn">Submit Order</button>
+        <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.75rem;">
+          <button type="button" class="btn" style="background: rgba(255,255,255,0.05); border: 1px solid var(--card-border); color: var(--text);" onclick="closeModal()">Cancel</button>
+          <button type="submit" class="btn">Create Order</button>
         </div>
       </form>
     </div>
   </div>
 
+  <div class="toast-container" id="toastContainer"></div>
+
   <script>
+    let allOrders = [];
+    let currentFilter = 'ALL';
+
+    async function loadData() {
+      await Promise.all([fetchOrders(), fetchMetrics()]);
+    }
+
+    async function fetchMetrics() {
+      try {
+        const res = await fetch('/api/v1/metrics');
+        const m = await res.json();
+        document.getElementById('metric-orders').textContent = m.total_orders;
+        document.getElementById('metric-revenue').textContent = '$' + m.total_revenue.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        document.getElementById('metric-memory').textContent = m.alloc_memory_mb.toFixed(2) + ' MB';
+        document.getElementById('metric-uptime').textContent = m.num_goroutine + ' / ' + m.uptime_seconds + 's';
+      } catch (err) {
+        console.error('Failed metrics fetch:', err);
+      }
+    }
+
     async function fetchOrders() {
       try {
         const res = await fetch('/api/v1/orders');
-        const data = await res.json();
-        const tbody = document.getElementById('orders-list');
-        tbody.innerHTML = '';
-
-        if (!data || data.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No orders found.</td></tr>';
-          return;
-        }
-
-        data.forEach(function(o) {
-          const tr = document.createElement('tr');
-          const totalPrice = (o.price * o.quantity).toFixed(2);
-          tr.innerHTML =
-            '<td style="font-weight: 600; color: #38bdf8;">' + o.id + '</td>' +
-            '<td>' + o.customer_name + '</td>' +
-            '<td>' + o.item + '</td>' +
-            '<td>' + o.quantity + '</td>' +
-            '<td>$' + totalPrice + '</td>' +
-            '<td><span class="tag tag-created">' + o.status + '</span></td>';
-          tbody.appendChild(tr);
-        });
+        allOrders = await res.json();
+        renderTable();
       } catch (err) {
-        console.error('Failed fetching orders:', err);
+        console.error('Failed orders fetch:', err);
       }
     }
 
-    async function testEndpoint(path) {
-      const output = document.getElementById('api-output');
-      output.textContent = 'Fetching ' + path + '...';
+    function renderTable() {
+      const tbody = document.getElementById('orders-list');
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      tbody.innerHTML = '';
+
+      const filtered = allOrders.filter(o => {
+        const matchesFilter = currentFilter === 'ALL' || o.status === currentFilter;
+        const matchesSearch = o.customer_name.toLowerCase().includes(search) || 
+                              o.item.toLowerCase().includes(search) || 
+                              o.id.toLowerCase().includes(search);
+        return matchesFilter && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: var(--muted); padding: 2rem;">No matching orders found.</td></tr>';
+        return;
+      }
+
+      filtered.forEach(o => {
+        const tr = document.createElement('tr');
+        const total = (o.price * o.quantity).toFixed(2);
+        
+        tr.innerHTML = 
+          '<td style="font-weight: 700; color: #38bdf8;">' + o.id + '</td>' +
+          '<td>' + escapeHtml(o.customer_name) + '</td>' +
+          '<td>' + escapeHtml(o.item) + '</td>' +
+          '<td>' + o.quantity + '</td>' +
+          '<td>$' + o.price.toFixed(2) + '</td>' +
+          '<td style="font-weight: 600;">$' + total + '</td>' +
+          '<td>' +
+            '<select class="status-select ' + o.status + '" onchange="updateStatus(\'' + o.id + '\', this.value)">' +
+              '<option value="CREATED"' + (o.status==='CREATED'?' selected':'') + '>CREATED</option>' +
+              '<option value="PROCESSING"' + (o.status==='PROCESSING'?' selected':'') + '>PROCESSING</option>' +
+              '<option value="COMPLETED"' + (o.status==='COMPLETED'?' selected':'') + '>COMPLETED</option>' +
+              '<option value="CANCELLED"' + (o.status==='CANCELLED'?' selected':'') + '>CANCELLED</option>' +
+            '</select>' +
+          '</td>' +
+          '<td><button class="btn-danger" onclick="deleteOrder(\'' + o.id + '\')">Delete</button></td>';
+
+        tbody.appendChild(tr);
+      });
+    }
+
+    function setFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderTable();
+    }
+
+    async function updateStatus(id, newStatus) {
       try {
-        const res = await fetch(path);
-        const json = await res.json();
-        output.textContent = JSON.stringify(json, null, 2);
+        const res = await fetch('/api/v1/orders/' + id + '/status', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (res.ok) {
+          showToast('Updated ' + id + ' status to ' + newStatus);
+          loadData();
+        }
       } catch (err) {
-        output.textContent = 'Error: ' + err.message;
+        showToast('Error updating status', true);
       }
     }
 
-    function openModal() {
-      document.getElementById('orderModal').style.display = 'flex';
-    }
-
-    function closeModal() {
-      document.getElementById('orderModal').style.display = 'none';
+    async function deleteOrder(id) {
+      if (!confirm('Are you sure you want to delete order ' + id + '?')) return;
+      try {
+        const res = await fetch('/api/v1/orders/' + id, { method: 'DELETE' });
+        if (res.ok) {
+          showToast('Order ' + id + ' deleted successfully');
+          loadData();
+        }
+      } catch (err) {
+        showToast('Error deleting order', true);
+      }
     }
 
     async function submitOrder(e) {
@@ -536,17 +734,48 @@ const dashboardHTML = `<!DOCTYPE html>
 
         if (res.ok) {
           closeModal();
-          fetchOrders();
-          testEndpoint('/api/v1/orders');
-        } else {
-          alert('Failed creating order');
+          showToast('New order created successfully!');
+          loadData();
+          document.getElementById('createOrderForm').reset();
         }
       } catch (err) {
-        alert('Error: ' + err.message);
+        showToast('Error creating order', true);
       }
     }
 
-    fetchOrders();
+    async function testEndpoint(path) {
+      const output = document.getElementById('api-output');
+      output.textContent = 'Fetching ' + path + '...';
+      try {
+        const res = await fetch(path);
+        const json = await res.json();
+        output.textContent = JSON.stringify(json, null, 2);
+      } catch (err) {
+        output.textContent = 'Error: ' + err.message;
+      }
+    }
+
+    function showToast(msg, isError = false) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      if (isError) toast.style.borderLeftColor = 'var(--red)';
+      toast.innerHTML = (isError ? '⚠️ ' : '✅ ') + escapeHtml(msg);
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3500);
+    }
+
+    function openModal() { document.getElementById('orderModal').style.display = 'flex'; }
+    function closeModal() { document.getElementById('orderModal').style.display = 'none'; }
+    function escapeHtml(str) { return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m]); }
+
+    // Initial load & 3-second Auto Refresh
+    loadData();
+    setInterval(() => {
+      if (document.getElementById('autoRefresh').checked) {
+        loadData();
+      }
+    }, 3000);
   </script>
 </body>
 </html>
