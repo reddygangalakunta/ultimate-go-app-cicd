@@ -7,6 +7,7 @@ Production-grade Go microservice with an enterprise multi-stage **Jenkins Declar
 ## 🚀 Key Features
 
 ### 1. Enterprise Go Microservice
+
 - **Clean Standard Layout**: Modular structure separating `cmd/`, `internal/config`, `internal/logger`, `internal/model`, `internal/service`, `internal/handler`, and `internal/middleware`.
 - **Structured JSON Logging**: Powered by Go standard `log/slog`.
 - **Graceful Shutdown**: Listens for SIGINT/SIGTERM OS signals and drains HTTP connections with a configurable timeout.
@@ -14,12 +15,14 @@ Production-grade Go microservice with an enterprise multi-stage **Jenkins Declar
 - **Domain API**: Orders REST API with request logging, panic recovery middleware, and high unit test coverage.
 
 ### 2. Enterprise Hardened Dockerfile
+
 - **Multi-Stage Build**: `golang:1.22-alpine` builder phase + `alpine:3.19` minimal runtime phase.
 - **Security-First**: Executed under custom non-root system user `appuser` (UID `10001`).
 - **Binary Optimization**: Static compilation (`CGO_ENABLED=0`) with symbol stripping (`-ldflags="-s -w"`) and dynamic version injection.
 - **Healthcheck & Annotations**: Built-in container `HEALTHCHECK` directive and standard OCI labels.
 
 ### 3. Multi-Stage Containerized Jenkins Pipeline (`Jenkinsfile`)
+
 - **Docker Agent per Stage**: **No local tool pre-installation needed on Jenkins runner host**. Every stage runs in dedicated official Docker containers (`golangci-lint`, `golang`, `docker:26-cli`, `aquasec/trivy`, `alpine/git`).
 - **Multibranch & PR Pipeline Execution Rules**:
   - **PR / Feature Branches**: Runs code validation & security checks:
@@ -35,6 +38,7 @@ Production-grade Go microservice with an enterprise multi-stage **Jenkins Declar
     9. **Update Git Manifest Image Tag** (`scripts/update-image-tag.sh`)
 
 ### 4. Git Image Tag Update Script (`scripts/update-image-tag.sh`)
+
 - Robust bash script with `set -euo pipefail`.
 - Modifies Kubernetes manifest (`deployments/k8s/deployment.yaml`) using `sed`.
 - Automates Git identity configuration, stages changed files, creates commit `[ci skip] chore(deploy): update image tag to <TAG>`, creates release git tag, and pushes back to origin repository.
@@ -116,4 +120,4 @@ Ensure the following credential IDs are configured in Jenkins:
 1. **`docker-registry-credentials`** *(Username with Password)*:
    - Credentials for pushing images to Docker Registry.
 2. **`git-credentials`** *(SSH Username with Private Key)*:
-   - Credentials for committing and pushing updated Kubernetes deployment manifests back to Git repository.
+   - Credentials for committing and pushing updated Kubernetes deployment manifests back in to Git repository.
