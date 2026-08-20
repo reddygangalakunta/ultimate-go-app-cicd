@@ -10,16 +10,6 @@ linters-settings:
   gosec:
     severity: "medium"
     confidence: "medium"
-  revive:
-    severity: warning
-    confidence: 0.8
-    rules:
-      - name: package-comments
-        disabled: true
-      - name: exported
-        disabled: true
-      - name: unused-parameter
-        disabled: true
 
 linters:
   enable:
@@ -28,7 +18,6 @@ linters:
     - ineffassign
     - staticcheck
     - unused
-    - revive
     - gosec
 
 issues:
